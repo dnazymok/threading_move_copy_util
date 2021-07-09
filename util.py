@@ -3,44 +3,45 @@ import argparse
 import shutil
 import os
 import logging
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 
 
 logging.basicConfig(filename="log.log", level=logging.DEBUG)
 
 
-def copy(src: list, dst: str) -> None:
+def copy(src: list, dst: str, threads_amount: int) -> None:
     """Copy files or directory to the destination
 
     Args:
         src: list of files or directory to be moved
         dst: destination directory
+        threads_amount: amount of threads
     """
-    for file in src:
-        if os.path.isfile(file):
-            thread = Thread(target=shutil.copy, args=(file, dst))
-            thread.start()
-            logging.info("File %s is copied to %s", file, dst)
-        elif os.path.isdir(file):
-            path = dst + file.split("/")[-1]
-            os.mkdir(path)
-            thread = Thread(target=shutil.copytree, args=(file, path),
-                            kwargs={"dirs_exist_ok": True})
-            thread.start()
-            logging.info("Directory %s is copied to %s", file, dst)
+    with ThreadPoolExecutor(threads_amount) as executor:
+        for file in src:
+            if os.path.isfile(file):
+                executor.submit(shutil.copy, file, dst)
+                logging.info("File %s is copied to %s", file, dst)
+            elif os.path.isdir(file):
+                path = dst + file.split("/")[-1]
+                os.mkdir(path)
+                executor.submit(shutil.copytree, file, path,
+                                dirs_exist_ok=True)
+                logging.info("Directory %s is copied to %s", file, dst)
 
 
-def move(src: list, dst: str) -> None:
+def move(src: list, dst: str, threads_amount: int) -> None:
     """Move files or directory to the destination
 
     Args:
         src: list of files or directory to be moved
         dst: destination directory
+        threads_amount: amount of threads
     """
-    for file in src:
-        thread = Thread(target=shutil.move, args=(file, dst))
-        thread.start()
-        logging.info("File %s is moved to %s", file, dst)
+    with ThreadPoolExecutor(threads_amount) as executor:
+        for file in src:
+            executor.submit(shutil.move, file, dst)
+            logging.info("File %s is moved to %s", file, dst)
 
 
 if __name__ == "__main__":
@@ -54,8 +55,8 @@ if __name__ == "__main__":
                         help="amount or threads")
     args = parser.parse_args()
     if args.operation == "copy":
-        copy(args.from_, args.to)
+        copy(args.from_, args.to, args.threads)
     elif args.operation == "move":
-        move(args.from_, args.to)
+        move(args.from_, args.to, args.threads)
     else:
         logging.error("Wrong operation")

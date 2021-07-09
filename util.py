@@ -1,6 +1,12 @@
+"""Multithreading util for copy and move files"""
 import argparse
 import shutil
 import os
+import logging
+from threading import Thread
+
+
+logging.basicConfig(filename="log.log", level=logging.DEBUG)
 
 
 def copy(src: list, dst: str) -> None:
@@ -12,13 +18,16 @@ def copy(src: list, dst: str) -> None:
     """
     for file in src:
         if os.path.isfile(file):
-            shutil.copy(file, dst)
+            thread = Thread(target=shutil.copy, args=(file, dst))
+            thread.start()
+            logging.info("File %s is copied to %s", file, dst)
         elif os.path.isdir(file):
             path = dst + file.split("/")[-1]
             os.mkdir(path)
-            shutil.copytree(file, path, dirs_exist_ok=True)
-        else:
-            print("error")  # todo log, permission error
+            thread = Thread(target=shutil.copytree, args=(file, path),
+                            kwargs={"dirs_exist_ok": True})
+            thread.start()
+            logging.info("Directory %s is copied to %s", file, dst)
 
 
 def move(src: list, dst: str) -> None:
@@ -29,8 +38,9 @@ def move(src: list, dst: str) -> None:
         dst: destination directory
     """
     for file in src:
-        shutil.move(file, dst)
-    # todo logging
+        thread = Thread(target=shutil.move, args=(file, dst))
+        thread.start()
+        logging.info("File %s is moved to %s", file, dst)
 
 
 if __name__ == "__main__":
@@ -40,12 +50,12 @@ if __name__ == "__main__":
                         help="source file or directory")
     parser.add_argument("--to", type=str,
                         help="destination directory")
-    parser.add_argument("--threads", type=int, help="amount or threads",
-                        default=1)
+    parser.add_argument("--threads", type=int, default=1,
+                        help="amount or threads")
     args = parser.parse_args()
     if args.operation == "copy":
         copy(args.from_, args.to)
     elif args.operation == "move":
         move(args.from_, args.to)
     else:
-        print("error")  # todo log error
+        logging.error("Wrong operation")

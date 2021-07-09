@@ -24,7 +24,8 @@ def copy(src: list, dst: str, threads_amount: int) -> None:
                 logging.info("File %s is copied to %s", file, dst)
             elif os.path.isdir(file):
                 path = dst + file.split("/")[-1]
-                os.mkdir(path)
+                if not os.path.exists(path):
+                    os.mkdir(path)
                 executor.submit(shutil.copytree, file, path,
                                 dirs_exist_ok=True)
                 logging.info("Directory %s is copied to %s", file, dst)
